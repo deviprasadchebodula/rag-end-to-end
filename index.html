@@ -1,0 +1,2376 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask your PDF</title>
+
+<style>
+
+:root {
+    --bg: #ffffff;
+    --side: #f7f7f5;
+    --text: #202123;
+    --muted: #71717a;
+    --line: #e5e5e3;
+    --soft: #f1f1ef;
+    --accent: #176b58;
+    --err: #b42318;
+
+    font-family: Inter, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    color-scheme: light;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1.7;
+}
+
+button, textarea, input {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+    color: inherit;
+}
+
+button:disabled {
+    cursor: not-allowed;
+}
+
+button:focus-visible,
+label:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+svg {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+/* APPLICATION LAYOUT */
+
+.app {
+    display: grid;
+    grid-template-columns: 310px minmax(0, 1fr);
+    height: 100dvh;
+    overflow: hidden;
+}
+
+/* SIDEBAR */
+
+.side {
+    background: var(--side);
+    border-right: 1px solid var(--line);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.8px;
+}
+
+.brand svg {
+    width: 38px;
+    height: 38px;
+    padding: 9px;
+    background: var(--text);
+    color: var(--bg);
+    border-radius: 11px;
+}
+
+.lead {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 0 6px;
+}
+
+.side-actions {
+    display: grid;
+    gap: 8px;
+}
+
+.action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 15px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.action:hover,
+.icon-btn:hover {
+    background: var(--soft);
+}
+
+.action:disabled {
+    opacity: 0.5;
+}
+
+/* PDF UPLOAD */
+
+.drop {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 20px;
+    border: 1px dashed #b8bcb8;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.drop:hover,
+.drop.over {
+    background: var(--soft);
+    border-color: var(--accent);
+}
+
+.drop svg {
+    width: 26px;
+    height: 26px;
+    color: var(--accent);
+}
+
+.drop strong {
+    font-size: 17px;
+    font-weight: 650;
+}
+
+.drop span,
+.none,
+.loading span {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.65;
+}
+
+/* LOADING STATE */
+
+.loading {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: var(--soft);
+    border-radius: 12px;
+}
+
+.loading b {
+    display: block;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+.loading span {
+    display: block;
+}
+
+.side[data-state="loading"] .drop {
+    display: none;
+}
+
+.side[data-state="loading"] .loading {
+    display: flex;
+}
+
+.spin {
+    width: 23px;
+    height: 23px;
+    flex-shrink: 0;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: rotate 0.8s linear infinite;
+}
+
+@keyframes rotate {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* DOCUMENT LIBRARY */
+
+.lib h3 {
+    margin: 4px 8px 12px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+}
+
+.none {
+    margin: 0 8px;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 10px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    margin: 5px 0;
+    background: var(--soft);
+    transition: background 0.2s;
+}
+
+.item.off {
+    background: transparent;
+}
+
+.item:hover {
+    background: var(--soft);
+}
+
+.item input {
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.item label {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.item b {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.item span {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.item button,
+.icon-btn {
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    border-radius: 9px;
+    padding: 8px;
+}
+
+.item button {
+    color: var(--muted);
+    font-size: 23px;
+    line-height: 1;
+}
+
+.item button:hover {
+    background: var(--line);
+    color: var(--err);
+}
+
+.item button:disabled,
+.item input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.err {
+    margin: 0;
+    font-size: 14px;
+    color: var(--err);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.err:empty {
+    display: none;
+}
+
+.foot {
+    margin-top: auto;
+    padding: 16px 8px 0;
+    border-top: 1px solid var(--line);
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--muted);
+}
+
+.foot strong {
+    display: block;
+    color: var(--text);
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+/* MAIN WORKSPACE */
+
+.main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100dvh;
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-height: 72px;
+    padding: 16px 26px;
+    border-bottom: 1px solid var(--line);
+}
+
+.top h1 {
+    font-size: 21px;
+    font-weight: 650;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.pill {
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 40%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pill.on {
+    color: var(--accent);
+}
+
+.pill.on::before {
+    content: "●";
+    font-size: 10px;
+    margin-right: 7px;
+}
+
+/* CHAT AREA */
+
+.chat {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 36px max(26px, calc((100% - 860px) / 2));
+    gap: 30px;
+    scrollbar-width: thin;
+}
+
+/* WELCOME SCREEN */
+
+.empty {
+    margin: auto 0;
+    padding: 30px 0;
+    text-align: center;
+}
+
+.empty::before {
+    content: "✳";
+    display: grid;
+    place-items: center;
+    width: 65px;
+    height: 65px;
+    margin: 0 auto 25px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    color: var(--accent);
+    background: var(--side);
+    font-size: 36px;
+}
+
+.empty h2 {
+    margin: 0 0 15px;
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -1.5px;
+}
+
+.empty p {
+    max-width: 500px;
+    margin: 0 auto 30px;
+    color: var(--muted);
+    font-size: 17px;
+}
+
+/* SUGGESTED QUESTIONS */
+
+.sugg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.sugg button {
+    min-height: 110px;
+    padding: 18px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 15px;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.5;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.sugg button::before {
+    content: "↗";
+    display: block;
+    color: var(--accent);
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.sugg button:hover {
+    background: var(--side);
+    border-color: var(--accent);
+}
+
+/* USER AND AI MESSAGES */
+
+.msg {
+    max-width: 100%;
+    font-size: 18px;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+}
+
+.msg.user {
+    align-self: flex-end;
+    max-width: 85%;
+    padding: 14px 22px;
+    background: var(--soft);
+    border-radius: 24px 24px 6px 24px;
+    white-space: pre-wrap;
+}
+
+.msg.bot {
+    align-self: stretch;
+    padding: 6px 0 14px;
+}
+
+.msg.bot::before {
+    content: "✳  Document assistant";
+    display: block;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 650;
+    margin-bottom: 15px;
+    letter-spacing: 0.2px;
+}
+
+.msg.bad {
+    color: var(--err);
+    white-space: pre-wrap;
+}
+
+.msg code {
+    background: var(--soft);
+    border-radius: 5px;
+    padding: 3px 6px;
+    font-size: 15px;
+}
+
+/* ACTIVE DOCUMENT INFORMATION */
+
+.srcs {
+    border-top: 1px solid var(--line);
+    margin-top: 20px;
+    padding-top: 12px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.message-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.copy-btn:hover {
+    color: var(--text);
+    background: var(--soft);
+}
+
+.copy-btn svg {
+    width: 15px;
+    height: 15px;
+}
+
+/* AI TYPING ANIMATION */
+
+.dots {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.dots i {
+    width: 8px;
+    height: 8px;
+    background: var(--muted);
+    border-radius: 50%;
+    animation: blink 1.1s infinite;
+}
+
+.dots i:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.dots i:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes blink {
+    0%, 80%, 100% {
+        opacity: 0.3;
+    }
+
+    40% {
+        opacity: 1;
+    }
+}
+
+/* CHATGPT-STYLE INPUT BOX */
+
+.composer-wrap {
+    padding: 10px 26px 14px;
+    background: var(--bg);
+}
+
+.bar {
+    max-width: 860px;
+    margin: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 27px;
+    box-shadow: 0 4px 24px #0000000b;
+}
+
+.bar textarea {
+    flex: 0 0 100%;
+    width: 100%;
+    min-height: 48px;
+    max-height: 160px;
+    padding: 6px;
+    resize: none;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+.bar textarea::placeholder {
+    color: var(--muted);
+}
+
+.bar textarea:disabled {
+    cursor: not-allowed;
+}
+
+.bar:focus-within {
+    border-color: var(--muted);
+}
+
+.bar button {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 43px;
+    height: 43px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--bg);
+    transition: opacity 0.2s;
+}
+
+.bar button:hover:not(:disabled) {
+    opacity: 0.75;
+}
+
+.bar button:disabled {
+    background: var(--soft);
+    color: var(--muted);
+}
+
+.bar .attach {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.bar .hint {
+    flex: 1;
+    min-width: 0;
+    color: var(--muted);
+    font-size: 14px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.disclaimer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 10px 0 0;
+}
+
+/* DARK MODE */
+
+body.dark {
+    --bg: #212121;
+    --side: #181818;
+    --text: #ececec;
+    --muted: #a5a5a5;
+    --line: #393939;
+    --soft: #303030;
+    --accent: #86d4b7;
+    --err: #ffaaaa;
+
+    color-scheme: dark;
+}
+
+/* COLLAPSIBLE SIDEBAR */
+
+body.collapsed .app {
+    grid-template-columns: 0 minmax(0, 1fr);
+}
+
+body.collapsed .side {
+    visibility: hidden;
+    padding: 0;
+    border: 0;
+}
+
+.shade {
+    display: none;
+}
+
+/* SCROLLBAR */
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* MOBILE RESPONSIVE DESIGN */
+
+@media (max-width: 760px) {
+
+    .app,
+    body.collapsed .app {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .side,
+    body.collapsed .side {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(320px, 88vw);
+        padding: 22px 16px;
+        border-right: 1px solid var(--line);
+        z-index: 5;
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 0.2s;
+    }
+
+    body.drawer .side {
+        visibility: visible;
+        transform: translateX(0);
+    }
+
+    body.drawer .shade {
+        display: block;
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        border: 0;
+        background: #0006;
+        z-index: 4;
+    }
+
+    .top {
+        min-height: 64px;
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .top h1 {
+        font-size: 17px;
+    }
+
+    .pill {
+        font-size: 12px;
+        max-width: 30%;
+    }
+
+    .chat {
+        padding: 24px 18px;
+        gap: 24px;
+    }
+
+    .msg {
+        font-size: 17px;
+        line-height: 1.8;
+    }
+
+    .empty {
+        padding: 12px 0;
+    }
+
+    .empty h2 {
+        font-size: 30px;
+        letter-spacing: -0.8px;
+    }
+
+    .empty p {
+        font-size: 16px;
+    }
+
+    .sugg {
+        grid-template-columns: 1fr;
+    }
+
+    .sugg button {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 0;
+        padding: 14px;
+    }
+
+    .sugg button::before {
+        margin: 0;
+    }
+
+    .composer-wrap {
+        padding: 8px 12px 12px;
+    }
+
+    .bar {
+        padding: 12px;
+        border-radius: 23px;
+    }
+
+    .bar textarea {
+        font-size: 16px;
+    }
+
+    .bar .hint {
+        font-size: 12px;
+    }
+
+    .disclaimer {
+        font-size: 11px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    * {
+        transition: none !important;
+    }
+
+    .spin,
+    .dots i {
+        animation-duration: 3s !important;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<button
+    class="shade"
+    id="shade"
+    aria-label="Close document sidebar">
+</button>
+
+<div class="app">
+
+    <!-- LEFT SIDEBAR -->
+
+    <aside class="side" id="side" data-state="idle">
+
+        <div class="brand">
+
+            <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 3v5h5M9 13h6M9 17h4"/>
+
+            </svg>
+
+            Ask your PDF
+
+        </div>
+
+        <div class="side-actions">
+
+            <button class="action" id="newChat" type="button">
+
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7">
+
+                    <path d="M12 5v14M5 12h14"/>
+
+                </svg>
+
+                New conversation
+
+            </button>
+
+        </div>
+
+        <p class="lead">
+
+            Upload your PDF documents, select a document
+            and ask questions in plain language.
+
+        </p>
+
+        <!-- PDF UPLOAD -->
+
+        <label
+            class="drop"
+            id="drop"
+            for="file"
+            tabindex="0"
+            role="button">
+
+            <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round">
+
+                <path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>
+
+            </svg>
+
+            <strong>Drop PDFs here</strong>
+
+            <span>
+                Drag and drop or click to choose.
+                You can upload multiple PDF documents.
+            </span>
+
+        </label>
+
+        <input
+            type="file"
+            id="file"
+            accept="application/pdf,.pdf"
+            multiple
+            hidden>
+
+        <!-- PDF PROCESSING -->
+
+        <div class="loading" role="status">
+
+            <div class="spin"></div>
+
+            <div>
+
+                <b id="ln">Reading PDF...</b>
+
+                <span>
+                    Processing and indexing your document.
+                </span>
+
+            </div>
+
+        </div>
+
+        <!-- DOCUMENT LIBRARY -->
+
+        <div class="lib">
+
+            <h3>Your documents</h3>
+
+            <div id="docs"></div>
+
+        </div>
+
+        <p class="err" id="err" role="alert"></p>
+
+        <div class="foot">
+
+            <strong>Document workspace</strong>
+
+            Answers are based on your active PDF document.
+
+        </div>
+
+    </aside>
+
+    <!-- MAIN CHAT INTERFACE -->
+
+    <main class="main">
+
+        <header class="top">
+
+            <button
+                class="icon-btn"
+                id="toggleSide"
+                aria-label="Toggle document sidebar"
+                aria-expanded="true">
+
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6">
+
+                    <rect
+                        x="3"
+                        y="4"
+                        width="18"
+                        height="16"
+                        rx="3"/>
+
+                    <path d="M9 4v16"/>
+
+                </svg>
+
+            </button>
+
+            <h1>Ask your PDF</h1>
+
+            <span class="spacer"></span>
+
+            <span class="pill" id="pill">
+
+                No document selected
+
+            </span>
+
+            <button
+                class="icon-btn"
+                id="theme"
+                aria-label="Switch color theme"
+                aria-pressed="false"
+                title="Switch color theme">
+
+                ◐
+
+            </button>
+
+        </header>
+
+        <!-- CONVERSATION -->
+
+        <div
+            class="chat"
+            id="chat"
+            role="log"
+            aria-live="polite">
+        </div>
+
+        <!-- MESSAGE COMPOSER -->
+
+        <div class="composer-wrap">
+
+            <div class="bar">
+
+                <textarea
+                    id="q"
+                    rows="1"
+                    aria-label="Ask a question"
+                    placeholder="Upload a PDF to start asking..."
+                    disabled></textarea>
+
+                <button
+                    type="button"
+                    class="attach"
+                    id="attach"
+                    title="Upload PDFs"
+                    aria-label="Upload PDFs">
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round">
+
+                        <path d="M12 5v14M5 12h14"/>
+
+                    </svg>
+
+                </button>
+
+                <span class="hint" id="hint">
+
+                    Ask about your documents
+
+                </span>
+
+                <button
+                    id="send"
+                    type="button"
+                    aria-label="Send question"
+                    disabled>
+
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round">
+
+                        <path d="M12 19V5M5 12l7-7 7 7"/>
+
+                    </svg>
+
+                </button>
+
+            </div>
+
+            <p class="disclaimer">
+
+                AI can make mistakes. Verify important
+                answers against the original PDF.
+
+            </p>
+
+        </div>
+
+    </main>
+
+</div>
+
+<!-- JAVASCRIPT -->
+
+<script>
+
+"use strict";
+
+const $ = id => document.getElementById(id);
+
+const side = $("side");
+const chat = $("chat");
+const q = $("q");
+const send = $("send");
+const fileInput = $("file");
+const drop = $("drop");
+const err = $("err");
+const list = $("docs");
+const newChat = $("newChat");
+const attach = $("attach");
+
+let docs = [];
+let activeDocId = null;
+let busy = false;
+let uploading = false;
+let started = false;
+
+const SUGGESTIONS = [
+
+    "Summarize this document",
+
+    "What are the key points?",
+
+    "Explain the main topics"
+
+];
+
+/* GET THE ACTIVE DOCUMENT */
+
+function activeDoc() {
+
+    return docs.find(
+        d => d.doc_id === activeDocId
+    ) || null;
+
+}
+
+/* SAFE TEXT FORMATTING */
+
+function esc(value) {
+
+    return String(value ?? "")
+
+        .replace(/&/g, "&amp;")
+
+        .replace(/</g, "&lt;")
+
+        .replace(/>/g, "&gt;");
+
+}
+
+function fmt(value) {
+
+    return esc(value)
+
+        .replace(
+            /\*\*(.+?)\*\*/g,
+            "<strong>$1</strong>"
+        )
+
+        .replace(
+            /`([^`]+)`/g,
+            "<code>$1</code>"
+        )
+
+        .replace(/\n/g, "<br>");
+
+}
+
+/* READ SERVER RESPONSE */
+
+async function readResponse(response) {
+
+    const raw = await response.text();
+
+    let data = {};
+
+    try {
+
+        data = raw ? JSON.parse(raw) : {};
+
+    } catch (_) {
+
+        data = {
+            detail: raw || "Empty server response"
+        };
+
+    }
+
+    if (!response.ok) {
+
+        console.error(
+            "API Error:",
+            response.status,
+            data
+        );
+
+        let message =
+            data.detail ||
+            data.message ||
+            data.error ||
+            `Server error (${response.status})`;
+
+        if (Array.isArray(message)) {
+
+            message = message.map(item => {
+
+                if (typeof item === "string") {
+                    return item;
+                }
+
+                const field = Array.isArray(item.loc)
+                    ? item.loc.join(".")
+                    : "";
+
+                return (
+                    field +
+                    (field ? ": " : "") +
+                    (item.msg || JSON.stringify(item))
+                );
+
+            }).join("\n");
+
+        } else if (
+            message &&
+            typeof message === "object"
+        ) {
+
+            message = JSON.stringify(
+                message,
+                null,
+                2
+            );
+
+        }
+
+        throw new Error(
+            `HTTP ${response.status}: ${message}`
+        );
+
+    }
+
+    return data;
+
+}
+
+/* WELCOME SCREEN */
+
+function renderEmpty() {
+
+    chat.innerHTML = "";
+
+    const container =
+        document.createElement("div");
+
+    container.className = "empty";
+    container.id = "empty";
+
+    if (activeDoc()) {
+
+        container.innerHTML = `
+
+            <h2>What would you like to know?</h2>
+
+            <p>
+                Explore, understand and ask questions
+                about your selected PDF document.
+            </p>
+
+            <div class="sugg"></div>
+
+        `;
+
+        SUGGESTIONS.forEach(suggestion => {
+
+            const button =
+                document.createElement("button");
+
+            button.type = "button";
+            button.textContent = suggestion;
+
+            button.onclick = () =>
+                ask(suggestion);
+
+            container
+                .querySelector(".sugg")
+                .appendChild(button);
+
+        });
+
+    } else if (docs.length) {
+
+        container.innerHTML = `
+
+            <h2>Select a document</h2>
+
+            <p>
+                Select a PDF from your document library
+                to start a conversation.
+            </p>
+
+        `;
+
+    } else {
+
+        container.innerHTML = `
+
+            <h2>Let's explore your documents</h2>
+
+            <p>
+                Upload a PDF and start asking questions.
+                Get clear answers from your documents.
+            </p>
+
+            <div class="sugg"></div>
+
+        `;
+
+        const uploadButton =
+            document.createElement("button");
+
+        uploadButton.type = "button";
+
+        uploadButton.textContent = "Upload a PDF";
+
+        uploadButton.onclick = () => {
+
+            if (!uploading && !busy) {
+                fileInput.click();
+            }
+
+        };
+
+        container
+            .querySelector(".sugg")
+            .appendChild(uploadButton);
+
+    }
+
+    chat.appendChild(container);
+
+}
+
+/* UPDATE APPLICATION STATE */
+
+function updateControls() {
+
+    const documentSelected = activeDoc();
+
+    q.disabled =
+        !documentSelected || busy || uploading;
+
+    send.disabled =
+        !documentSelected ||
+        busy ||
+        uploading ||
+        !q.value.trim();
+
+    newChat.disabled = busy;
+
+    attach.disabled = busy || uploading;
+
+    fileInput.disabled = busy || uploading;
+
+    list.querySelectorAll("input, button")
+        .forEach(element => {
+
+            element.disabled =
+                busy || uploading;
+
+        });
+
+}
+
+/* REFRESH INTERFACE */
+
+function refresh() {
+
+    const documentSelected = activeDoc();
+
+    $("pill").textContent = documentSelected
+        ? "1 document selected"
+        : "No document selected";
+
+    $("pill").classList.toggle(
+        "on",
+        Boolean(documentSelected)
+    );
+
+    $("pill").title = documentSelected
+        ? documentSelected.filename
+        : "";
+
+    $("hint").textContent = documentSelected
+        ? documentSelected.filename
+        : "Ask about your documents";
+
+    $("hint").title = documentSelected
+        ? documentSelected.filename
+        : "";
+
+    q.placeholder = busy
+
+        ? "Generating your answer..."
+
+        : uploading
+
+        ? "Processing your PDF..."
+
+        : documentSelected
+
+        ? "Ask anything about your selected PDF..."
+
+        : "Upload or select a PDF to start asking...";
+
+    updateControls();
+
+    if (!started) {
+        renderEmpty();
+    }
+
+}
+
+/* DOCUMENT LIBRARY */
+
+function renderDocs() {
+
+    list.innerHTML = "";
+
+    if (!docs.length) {
+
+        list.innerHTML =
+            '<p class="none">No documents yet.</p>';
+
+        return;
+
+    }
+
+    docs.forEach(documentItem => {
+
+        const selected =
+            documentItem.doc_id === activeDocId;
+
+        const row =
+            document.createElement("div");
+
+        row.className =
+            "item" + (selected ? "" : " off");
+
+        /*
+          IMPORTANT:
+          Your Python backend supports one
+          document ID per question.
+
+          Radio buttons ensure only one PDF
+          is active at any given time.
+        */
+
+        const radio =
+            document.createElement("input");
+
+        radio.type = "radio";
+
+        radio.name = "active-document";
+
+        radio.id =
+            "doc-" + documentItem.doc_id;
+
+        radio.checked = selected;
+
+        radio.disabled = busy || uploading;
+
+        radio.onchange = () => {
+
+            if (busy || uploading) {
+                return;
+            }
+
+            activeDocId = documentItem.doc_id;
+
+            renderDocs();
+
+            refresh();
+
+        };
+
+        const label =
+            document.createElement("label");
+
+        label.htmlFor = radio.id;
+
+        const name =
+            document.createElement("b");
+
+        name.textContent =
+            documentItem.filename;
+
+        name.title =
+            documentItem.filename;
+
+        const details =
+            document.createElement("span");
+
+        details.textContent =
+            documentItem.chunks +
+            " sections indexed";
+
+        label.append(name, details);
+
+        const remove =
+            document.createElement("button");
+
+        remove.type = "button";
+
+        remove.textContent = "×";
+
+        remove.title =
+            "Remove from this workspace";
+
+        remove.setAttribute(
+            "aria-label",
+            "Remove " + documentItem.filename
+        );
+
+        remove.disabled = busy || uploading;
+
+        remove.onclick = () =>
+            removeDoc(documentItem);
+
+        row.append(
+            radio,
+            label,
+            remove
+        );
+
+        list.appendChild(row);
+
+    });
+
+}
+
+/* ADD CHAT MESSAGE */
+
+function addMessage(text, className) {
+
+    started = true;
+
+    const empty = $("empty");
+
+    if (empty) {
+        empty.remove();
+    }
+
+    const message =
+        document.createElement("div");
+
+    message.className =
+        "msg " + className;
+
+    message.textContent = text;
+
+    chat.appendChild(message);
+
+    chat.scrollTop = chat.scrollHeight;
+
+    return message;
+
+}
+
+/* UPLOAD A SINGLE PDF */
+
+async function uploadOne(file, index, total) {
+
+    if (!/\.pdf$/i.test(file.name)) {
+
+        return file.name +
+            " is not a valid PDF.";
+
+    }
+
+    $("ln").textContent =
+        "Reading " + file.name +
+
+        (total > 1
+
+            ? ` (${index} of ${total})`
+
+            : "");
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    try {
+
+        const response = await fetch("/upload", {
+
+            method: "POST",
+
+            body: formData
+
+        });
+
+        const data =
+            await readResponse(response);
+
+        if (
+            typeof data.doc_id !== "string" ||
+            !data.doc_id
+        ) {
+
+            throw new Error(
+                "The server did not return a document ID."
+            );
+
+        }
+
+        const documentItem = {
+
+            doc_id: data.doc_id,
+
+            filename: data.filename || file.name,
+
+            chunks: data.chunks ?? 0
+
+        };
+
+        docs.push(documentItem);
+
+        /*
+          Select the newly uploaded PDF.
+        */
+
+        activeDocId = documentItem.doc_id;
+
+        renderDocs();
+
+        refresh();
+
+        return "";
+
+    } catch (error) {
+
+        return file.name +
+            " failed: " +
+            error.message;
+
+    }
+
+}
+
+/* MULTIPLE PDF UPLOAD */
+
+async function uploadMany(files) {
+
+    const items = Array.from(files);
+
+    if (
+        !items.length ||
+        uploading ||
+        busy
+    ) {
+
+        return;
+
+    }
+
+    uploading = true;
+
+    err.textContent = "";
+
+    side.dataset.state = "loading";
+
+    refresh();
+
+    const problems = [];
+
+    try {
+
+        for (
+            let i = 0;
+            i < items.length;
+            i++
+        ) {
+
+            const problem = await uploadOne(
+
+                items[i],
+
+                i + 1,
+
+                items.length
+
+            );
+
+            if (problem) {
+                problems.push(problem);
+            }
+
+        }
+
+    } finally {
+
+        uploading = false;
+
+        side.dataset.state = "idle";
+
+        fileInput.value = "";
+
+        renderDocs();
+
+        refresh();
+
+    }
+
+    if (problems.length) {
+
+        err.textContent =
+            problems.join("\n");
+
+    }
+
+    if (activeDoc() && !q.disabled) {
+        q.focus();
+    }
+
+}
+
+/* REMOVE DOCUMENT FROM UI */
+
+function removeDoc(documentItem) {
+
+    if (busy || uploading) {
+        return;
+    }
+
+    /*
+      Your uploaded app.py does not implement
+      DELETE /documents/{doc_id}.
+
+      Therefore, this only removes the PDF
+      from the current frontend workspace.
+
+      It does not delete server files or
+      Pinecone vectors.
+    */
+
+    const confirmed = confirm(
+
+        `Remove "${documentItem.filename}" ` +
+
+        "from this workspace?\n\n" +
+
+        "The original server data will not be deleted."
+
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    docs = docs.filter(
+
+        d => d.doc_id !== documentItem.doc_id
+
+    );
+
+    if (activeDocId === documentItem.doc_id) {
+
+        activeDocId = docs.length
+
+            ? docs[0].doc_id
+
+            : null;
+
+    }
+
+    renderDocs();
+
+    refresh();
+
+}
+
+/* COPY AI ANSWER */
+
+function addCopyButton(message, answer) {
+
+    const actions =
+        document.createElement("div");
+
+    actions.className = "message-actions";
+
+    const button =
+        document.createElement("button");
+
+    button.type = "button";
+
+    button.className = "copy-btn";
+
+    button.innerHTML = `
+
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7">
+
+            <rect
+                x="8"
+                y="8"
+                width="12"
+                height="12"
+                rx="2"/>
+
+            <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>
+
+        </svg>
+
+        Copy answer
+
+    `;
+
+    button.onclick = async () => {
+
+        try {
+
+            await navigator.clipboard.writeText(
+                answer
+            );
+
+            button.textContent = "Copied";
+
+        } catch (error) {
+
+            console.error(
+                "Clipboard error:",
+                error
+            );
+
+            button.textContent =
+                "Unable to copy";
+
+        }
+
+    };
+
+    actions.appendChild(button);
+
+    message.appendChild(actions);
+
+}
+
+/* =========================================
+   AI QUESTION AND ANSWER
+   CORRECTED FOR YOUR FASTAPI BACKEND
+   ========================================= */
+
+async function ask(text) {
+
+    const question = String(
+        text || q.value
+    ).trim();
+
+    const documentSelected = activeDoc();
+
+    if (
+        !question ||
+        !documentSelected ||
+        busy ||
+        uploading
+    ) {
+
+        return;
+
+    }
+
+    busy = true;
+
+    q.value = "";
+
+    q.style.height = "auto";
+
+    addMessage(question, "user");
+
+    refresh();
+
+    const wait =
+        addMessage("", "bot");
+
+    wait.innerHTML = `
+
+        <span class="dots"
+              aria-label="Generating answer">
+
+            <i></i>
+            <i></i>
+            <i></i>
+
+        </span>
+
+    `;
+
+    try {
+
+        /*
+          IMPORTANT BACKEND FIX
+
+          app.py expects:
+
+          class Question(BaseModel):
+              question: str
+              doc_id: str
+
+          Therefore send "doc_id" instead
+          of "doc_ids".
+        */
+
+        const response = await fetch("/ask", {
+
+            method: "POST",
+
+            headers: {
+
+                "Content-Type": "application/json"
+
+            },
+
+            body: JSON.stringify({
+
+                question: question,
+
+                doc_id: documentSelected.doc_id
+
+            })
+
+        });
+
+        const data =
+            await readResponse(response);
+
+        if (
+            typeof data.answer !== "string" ||
+            !data.answer.trim()
+        ) {
+
+            throw new Error(
+
+                "The backend returned an empty or " +
+
+                "invalid answer."
+
+            );
+
+        }
+
+        wait.innerHTML = fmt(data.answer);
+
+        /*
+          Display the active PDF name.
+
+          This is not presented as a verified
+          page citation because your rag.py
+          currently returns only answer text.
+        */
+
+        const source =
+            document.createElement("div");
+
+        source.className = "srcs";
+
+        source.textContent =
+            "Active document: " +
+            documentSelected.filename;
+
+        wait.appendChild(source);
+
+        addCopyButton(wait, data.answer);
+
+    } catch (error) {
+
+        console.error(
+            "Question request failed:",
+            error
+        );
+
+        wait.classList.add("bad");
+
+        wait.textContent =
+
+            "Could not generate an answer.\n\n" +
+
+            error.message +
+
+            "\n\nCheck your backend terminal " +
+
+            "for more information.";
+
+    } finally {
+
+        busy = false;
+
+        refresh();
+
+        if (!q.disabled) {
+            q.focus();
+        }
+
+        chat.scrollTop = chat.scrollHeight;
+
+    }
+
+}
+
+/* PDF FILE SELECTION */
+
+fileInput.addEventListener(
+    "change",
+    () => uploadMany(fileInput.files)
+);
+
+/* DRAG AND DROP */
+
+["dragenter", "dragover"].forEach(eventName => {
+
+    drop.addEventListener(eventName, event => {
+
+        event.preventDefault();
+
+        if (!uploading && !busy) {
+
+            drop.classList.add("over");
+
+        }
+
+    });
+
+});
+
+["dragleave", "drop"].forEach(eventName => {
+
+    drop.addEventListener(eventName, event => {
+
+        event.preventDefault();
+
+        drop.classList.remove("over");
+
+    });
+
+});
+
+drop.addEventListener("drop", event => {
+
+    if (!uploading && !busy) {
+
+        uploadMany(
+            event.dataTransfer.files
+        );
+
+    }
+
+});
+
+/* KEYBOARD ACCESSIBLE UPLOAD */
+
+drop.addEventListener("keydown", event => {
+
+    if (
+        event.key === "Enter" ||
+        event.key === " "
+    ) {
+
+        event.preventDefault();
+
+        if (!uploading && !busy) {
+
+            fileInput.click();
+
+        }
+
+    }
+
+});
+
+/* ATTACHMENT BUTTON */
+
+attach.addEventListener("click", () => {
+
+    if (!uploading && !busy) {
+
+        fileInput.click();
+
+    }
+
+});
+
+/* SEND QUESTION */
+
+send.addEventListener("click", () => {
+
+    ask();
+
+});
+
+/* ENTER TO SEND */
+
+q.addEventListener("keydown", event => {
+
+    if (
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.isComposing
+    ) {
+
+        event.preventDefault();
+
+        ask();
+
+    }
+
+});
+
+/* AUTOMATIC TEXTAREA HEIGHT */
+
+q.addEventListener("input", () => {
+
+    q.style.height = "auto";
+
+    q.style.height =
+
+        Math.min(q.scrollHeight, 160) + "px";
+
+    updateControls();
+
+});
+
+/* RESPONSIVE SIDEBAR */
+
+const mobile = () =>
+
+    window.matchMedia(
+
+        "(max-width: 760px)"
+
+    ).matches;
+
+function syncSidebar() {
+
+    const expanded = mobile()
+
+        ? document.body.classList.contains("drawer")
+
+        : !document.body.classList.contains("collapsed");
+
+    $("toggleSide").setAttribute(
+
+        "aria-expanded",
+
+        String(expanded)
+
+    );
+
+}
+
+$("toggleSide").addEventListener("click", () => {
+
+    document.body.classList.toggle(
+
+        mobile()
+
+            ? "drawer"
+
+            : "collapsed"
+
+    );
+
+    syncSidebar();
+
+});
+
+$("shade").addEventListener("click", () => {
+
+    document.body.classList.remove("drawer");
+
+    syncSidebar();
+
+    $("toggleSide").focus();
+
+});
+
+window.addEventListener("resize", () => {
+
+    if (!mobile()) {
+
+        document.body.classList.remove("drawer");
+
+    }
+
+    syncSidebar();
+
+});
+
+document.addEventListener("keydown", event => {
+
+    if (
+
+        event.key === "Escape" &&
+
+        document.body.classList.contains("drawer")
+
+    ) {
+
+        $("shade").click();
+
+    }
+
+});
+
+/* NEW CONVERSATION */
+
+newChat.addEventListener("click", () => {
+
+    if (busy) {
+        return;
+    }
+
+    started = false;
+
+    q.value = "";
+
+    q.style.height = "auto";
+
+    err.textContent = "";
+
+    document.body.classList.remove("drawer");
+
+    syncSidebar();
+
+    refresh();
+
+    if (!q.disabled) {
+
+        q.focus();
+
+    }
+
+});
+
+/* THEME MANAGEMENT */
+
+function applyTheme(dark) {
+
+    document.body.classList.toggle(
+
+        "dark",
+
+        dark
+
+    );
+
+    $("theme").setAttribute(
+
+        "aria-pressed",
+
+        String(dark)
+
+    );
+
+    $("theme").title = dark
+
+        ? "Switch to light mode"
+
+        : "Switch to dark mode";
+
+}
+
+try {
+
+    applyTheme(
+
+        localStorage.getItem("pdf-theme") === "dark"
+
+    );
+
+} catch (_) {
+
+    applyTheme(false);
+
+}
+
+$("theme").addEventListener("click", () => {
+
+    const dark =
+        !document.body.classList.contains("dark");
+
+    applyTheme(dark);
+
+    try {
+
+        localStorage.setItem(
+
+            "pdf-theme",
+
+            dark ? "dark" : "light"
+
+        );
+
+    } catch (_) {}
+
+});
+
+/* INITIALIZE APPLICATION */
+
+/*
+  Your backend currently has no GET /documents
+  endpoint. The document library therefore
+  starts empty when the page is refreshed.
+*/
+
+renderDocs();
+
+refresh();
+
+syncSidebar();
+
+</script>
+
+</body>
+</html>
