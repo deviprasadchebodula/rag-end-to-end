@@ -16,3 +16,6 @@ uploads/
 *.log
 *.ipynb
 .ipynb_checkpoints/
+.openrouter_key
+*.backup
+*-backup
