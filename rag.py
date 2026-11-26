@@ -66,4 +66,9 @@ def ask(question, namespace):
              |
              StrOutputParser())
 
-    return chain.invoke(question)
+    for attempt in range(3):
+        answer = chain.invoke(question)
+        if isinstance(answer, str) and answer.strip():
+            return answer.strip()
+
+    return "The AI service is temporarily unavailable. Please try again."
