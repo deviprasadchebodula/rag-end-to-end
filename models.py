@@ -1,16 +1,20 @@
-####################### Models ###########################
-
-from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEmbeddings
-
 import os
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
+
 load_dotenv()
 
-GROQ_API_KEY=os.getenv("GROQ_API_KEY")
-GROQ_MODEL="openai/gpt-oss-20b"
-EMBED_MODEL="sentence-transformers/all-MiniLM-L6-v2"
-llm = ChatGroq(api_key=GROQ_API_KEY,
-                       model=GROQ_MODEL,
-                       temperature=0) 
-embedding = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+llm = ChatOpenAI(
+    api_key=os.environ["OPENROUTER_API_KEY"],
+    base_url="https://openrouter.ai/api/v1",
+    model="openrouter/free",
+    temperature=0,
+    max_tokens=4096,
+    timeout=60,
+    max_retries=1
+)
+
+embedding = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
